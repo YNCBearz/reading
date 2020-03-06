@@ -121,7 +121,7 @@
 
   1. *Extract Class*
   2. *Extract Superclass*
-  3. *Replace Type Code with Subclasses*
+  3. *Replace Type Code with Subclasses* （即工廠模式）
 
 ----------------------------------------------
 
