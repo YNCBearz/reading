@@ -1,4 +1,4 @@
-# **業務規則 (Business Rules)**
+# **會尖叫的架構 (Screaming Architecure)**
 
 ## **架構的主題 (The Theme Of An Architecture)**
 ### 架構不是關於框架的，框架只是工具。
