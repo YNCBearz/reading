@@ -51,7 +51,7 @@ SELECT pref_name,
     -- 男性的人口
     SUM ( CASE WHEN sex = '1' THEN population ELSE 0 END ) AS cnt_m,
     -- 女性的人口
-    SUM ( CASE WHEN sex = 'm' THEN population ELSE 0 END ) AS cnt_f,
+    SUM ( CASE WHEN sex = '2' THEN population ELSE 0 END ) AS cnt_f,
 FROM PopTb12
 GROUP BY pref_name
 ```
@@ -62,7 +62,13 @@ GROUP BY pref_name
 
 ## 以CHECK限制定義多個欄位的條件關係
 
-MySQL 8.0 未支援CHECK限制。
+```sql
+CONSTRAINT check_salary CHECK
+(CASE WHEN sex = '2'
+      THEN CASE WHEN salary <= 200000
+                THEN 1 ELSE 0 END
+ ELSE 1 END = 1)
+```
 
 ---
 
@@ -90,7 +96,7 @@ WHERE salary >= 250000 AND salary < 280000;
 正確的下法
 ```sql
 UPDATE Personnel
-SET sakary = CASE WHEN salary >= 300000
+SET salary = CASE WHEN salary >= 300000
                   THEN salary * 0.9
                   WHEN salary >= 250000 AND salary < 280000
                   THEN salary * 1.2
