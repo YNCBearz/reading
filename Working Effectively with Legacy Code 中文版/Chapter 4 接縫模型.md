@@ -65,7 +65,7 @@ PostReceiverError(SOCKETCALLBACK, SSL_FAILURE);
 又不能在最終產品程式碼呼叫不到它。
 
 > **Seam**
-
+>
 > A seam is a place where you can alter behavior in your program without editing in that place.
 
 在PostReceiveError的呼叫點存在接縫嗎？答案是肯定的。
@@ -125,7 +125,7 @@ class TestingAsyncSslRec : public CAsyncSslRec
 這讓程式中，帶來了更多的接縫。
 
 > **Seam**
-
+>
 > A seam is a place where you can alter behavior in your program without editing in that place.
 
 ```c++
@@ -174,7 +174,7 @@ db_update原先的實作被替換之後，
 當遇到一個接縫時，即意味著我們可以改變其所在之處的行為。這裡有一個**致能點**的概念。
 
 > **Enabling Point**
-
+>
 > Every seam has an enabling point, a place where you can make the decision to use one behavior or another.
 
 **解依賴流程：找出接縫，然後替換致能點。**
@@ -235,11 +235,11 @@ public class FitFilter {
 來告訴Java系統到哪裡去尋找這些類別。
 
 > Suppose we wanted to supply a different version of the Parse class for testing. Where would the **seam** be?
-
+>
 > The seam is the **new Parse** call in the process method.
 
 > Where is the **enabling point**?
-
+>
 > The enabling point is the **classpath**.
 
 這招常見於對第三方函式庫的依賴。
@@ -334,7 +334,7 @@ TEST(simpleRender,Figure)
 有時在建構或部署腳本中，這使得連接期接縫的使用，顯得不那麼醒目。
 
 > **Usage Tip.**
-
+>
 > If you use link seams, make sure that the difference between test and production envi- ronments is obvious.
 
 ---
@@ -398,11 +398,11 @@ public class CustomSpreadsheet extends Spreadsheet
 答案是builderMartSheet參數列表。
 
 > **Seam**
-
+>
 > A seam is a place where you can alter behavior in your program without editing in that place.
 
 > **Enabling Point**
-
+>
 > Every seam has an enabling point, a place where you can make the decision to use one behavior or another.
 
 ---
