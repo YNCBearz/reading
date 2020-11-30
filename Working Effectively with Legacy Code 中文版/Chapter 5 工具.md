@@ -1,5 +1,4 @@
-## Chapter 5
-# Tools（工具）
+# Chapter 5 - Tools（工具）
 
 ## 5.1 自動化重構工具
 

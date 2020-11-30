@@ -1,5 +1,4 @@
-## Chapter 4
-# The Seam Model（接縫模型）
+# Chapter 4 - The Seam Model（接縫模型）
 
 欲得到**易於測試**的程式碼，普遍只有兩種方式：
 1.  邊開發邊編寫測試
