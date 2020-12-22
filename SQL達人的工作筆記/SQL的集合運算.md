@@ -8,7 +8,7 @@
 
 不過，現在的標準SQL總算備有齊全的集合運算子。
 
-ʕ •ᴥ•ʔ：查一下除法資訊。
+ʕ •ᴥ•ʔ：MySQL沒有交集 (INTERSECT)與差集 (EXCEPT)、也沒有除法 (DIVIDE BY)運算子。
 
 ---
 
@@ -17,15 +17,20 @@
 
 **[注意事項1]：**
 
-SQL操作的集合為允許重複列出現的多重集合，所以有對應這部分的ALL選項。
-若依習慣使用UNION或INTERSECT，就會從結果排除重複列。
-想保留重複列，就必須加上ALL選項，寫成UNION ALL的語法。
+集合論的集合通常不允許重複元素的存在，不過關聯式資料庫的資料表是允許重複列出現的多重集合 (multiset, bag)。
+
+若依習慣使用UNION或INTERSECT，就會從**結果排除重複列**。
+想**保留重複列，就必須加上ALL選項**，寫成UNION ALL的語法。
 
 這與SELECT陳述句的DISTINCT選項剛好背道而馳，
 但令人不解的是不能寫成「UNION DISTINCT」。
 
 兩種寫法除結果外，不允許重複列的集合運算子會自動排序。
-但在加上ALL選項後，不會自動排序，所以有些許提昇效能。
+但在**加上ALL選項後，不會自動排序**，所以有些許提昇效能。
+
+ʕ •ᴥ•ʔ：尼馬提昇效能，上禮拜我很開心的在GUI用UNION ALL，然後直接slow query..(6分鐘)
+
+同事表示：只有菜雞才會選擇用UNION。
 
 **[注意事項2]：**
 
@@ -40,13 +45,13 @@ SQL Server從2005版之後，開始支援INTERSECT與EXCEPT。
 MySQL直到2018年仍未支援這兩種運算子，
 也有Oralce這種將EXCEPT稱為MINUS的DBMS。
 
-ʕ •ᴥ•ʔ：查一下MySQL支援了沒。
-
 **[注意事項4]：**
 
 四則運算的聯集 (UNION)、差集 (EXCEPT)、乘積 (CROSS JOIN)都已成為標準規格。
 
 只有商 (DIVIDE BY)仍因各種緣故，遲遲未標準化。
+
+ʕ •ᴥ•ʔ：不好意思，MySQL還是沒有差集 (EXCEPT)。
 
 ---
 
@@ -64,7 +69,7 @@ UNION會排除重複列。
 
 UNION在數學上稱為「冪等性」(idempotency)的性質。
 這是群論抽象代數所使用的概念，定義也非常多種。
-與這次有關的意義為**二項運算子＊的任意輸入值S符合S＊S的定義**。
+與這次有關的意義為**二項運算子＊的任意輸入值S符合S＊S = S的定義**。
 
 在程式設計的領域，這個定義被稍微擴張成「即使重複執行相同處理，其結果與只執行一次處理的結果相同」。
 
@@ -147,6 +152,23 @@ WHERE NOT EXISTS
 ```
 
 「原來如此，若只需要除法 (division) ， 就可以利用分割 (divide) 來解題」
+
+---
+
+解法二 (Zero 提供)
+
+```sql
+SELECT
+	emp
+FROM
+	emp_skills
+INNER JOIN skills ON
+	skills.skill = emp_skills.skill
+GROUP BY
+	emp
+HAVING
+	count(*) >= (select count(*) from skills);
+```
 
 ---
 
