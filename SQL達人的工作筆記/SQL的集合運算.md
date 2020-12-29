@@ -172,6 +172,33 @@ HAVING
 
 ---
 
+解法三 (Zero 提供)
+
+```sql=
+SELECT
+	DISTINCT emp
+FROM
+	emp_skills AS A
+WHERE
+	NOT EXISTS (
+	SELECT
+		*
+	FROM
+		skills C
+	WHERE
+		NOT EXISTS (
+		SELECT
+			*
+		FROM
+			emp_skills AS B
+		WHERE
+			(A.emp = B.emp)
+			AND (B.skill = C.skill) ));
+
+```
+
+---
+
 ## 找出相等的部分集合
 
 ```sql
