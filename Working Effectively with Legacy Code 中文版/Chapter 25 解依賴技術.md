@@ -327,7 +327,199 @@ To use Definition Completion in C++, follow these steps:
 
 ## Encapsulate Global References （封裝全域參照）
 
+在測試依賴於全域變數時，本質上有三個選擇：
+1. 想辦法讓它依賴的全域變數，在測試期間具有另一種行為 （ex: 不同的env檔）
+2. 利用連接器，連接到另一個全域變數定義
+3. 將其封裝，進而可以進行解耦
 
+```c++
+bool AGG230_activeframe[AGG230_SIZE];
+bool AGG230_suspendedframe[AGG230_SIZE];
+
+void AGGController::suspend_frame()
+{
+    frame_copy(AGG230_suspendedframe,
+            AGG230_activeframe);
+    clear(AGG230_activeframe);
+    flush_frame_buffers();
+}
+
+void AGGController::flush_frame_buffers()
+{
+    for (int n = 0; n < AGG230_SIZE; ++n) {
+        AGG230_activeframe[n] = false;
+        AGG230_suspendedframe[n] = false;
+    }
+}
+
+```
+
+**suspend_frame**函數需要存取**AGG230_activeframe**跟**AGG230_suspendedframe**這兩個全域陣列。
+
+乍看之下，可以將這兩個陣列做成**AGGController**的成員變數，然而其實行不通。
+因為還有其他類別也要用到這兩個陣列。
+
+你可能會想到**Parameterize Method （參數化方法）**，
+將它們作為參數傳遞給**suspend_frame**函數。
+
+實際上這樣做的問題是，若**suspend_frame**呼叫了某個函數，
+而後者也使用全域變數的話，我們就必須同樣地將該變數傳遞給它。
+
+另一個選擇是將全域陣列傳遞給**AGGController**的建構子。
+這麼做是可行的，也可以順便檢查其他用到的地方。
+
+如果發現每次都是兩兩一起被使用，可考慮將它們綁在一起。
+
+> If several globals are always used or are modified near each other, they belong in the same class.
+
+應付這種情況的最佳方法，就是觀察資料。
+
+> When naming a class, think about the methods that will eventually reside on it. The name should be good, but it doesn’t have to be perfect. Remember that you can always rename the class later.
+
+在上例中，我期望**frame_copy**和**clear**能被移至我們將要建立的新類別中。
+我們可以命名為**Frame**，每個**Frame**都包含活動緩衝區與懸置緩衝區。
+
+>  The class name that you find might already be in use. If so, consider whether you can rename whatever is using that name.
+
+```c++
+class Frame
+{
+public:
+    // declare AGG230_SIZE as a constant
+    enum { AGG230_SIZE = 256 };
+
+    bool AGG230_activeframe[AGG230_SIZE];
+    bool AGG230_suspendedframe[AGG230_SIZE];
+};
+```
+
+此處保留兩個陣列的原始名稱，這是為了簡化後面的步驟。
+
+```c++
+// 宣吿Frame類別的全域物件
+Frame frameForAGG230;
+
+// 註解原本的宣告
+// bool AGG230_activeframe[AGG230_SIZE];
+// bool AGG230_suspendedframe[AGG230_SIZE];
+```
+
+接著透過編輯器，找到每一行出錯的程式碼。
+將裡面用到這兩個陣列的宣告，加上**frameForAGG230**的前綴。
+
+```c++
+void AGGController::suspend_frame()
+{
+    frame_copy(frameForAGG230.AGG230_suspendedframe,
+                frameForAGG230.AGG230_activeframe);
+    clear(frameForAGG20.AGG230_activeframe);
+    flush_frame_buffer();
+}
+```
+
+> Referencing a member of a class rather than a simple global is only the first step. Afterward, consider whether you should use **Introduce Static Setter （靜態設置方法）** , or parameterize the code using **Parameterize Constructor （參數化建構子）** or **Parameterize Method （參數化方法）**.
+
+一旦實作了將**Frame**傳遞進**AGGController**之後，
+我們就可以做一點小小的重新命名，讓程式碼變得更清晰。
+
+```c++
+class Frame
+{
+public:
+    enum { BUFFER_SIZE = 256 };
+    bool activebuffer[BUFFER_SIZE];
+
+    bool suspendedbuffer[BUFFER_SIZE];
+};
+
+Frame frameForAGG230;
+
+void AGGController::suspend_frame()
+{
+    frame_copy(frame.suspendedbuffer, frame.activebuffer);
+
+    clear(frame.activeframe);
+    flush_frame_buffer();
+}
+```
+
+>  When you use Encapsulate Global References, start with data or small methods. More substantial methods can be moved to the new class when more tests are in place.
+
+除了對全域變數可以用此技術外，
+面對C++的非成員函數 (global functions)也可以做同樣的事。
+
+```c++
+void ColumnModel::update()
+{
+    alignRows();
+    Option resizeWidth = ::GetOption("ResizeWidth");
+    if (resizeWidth.isTrue()) {
+        resize();
+    } else {
+        resizeToDefault();
+    }
+}
+```
+
+我們一樣可以**Parameterize Method （參數化方法）**和**Extract and Override Getter （提取並覆寫獲取方法）**。
+但如果這些呼叫跨越多個方法多個類別，則使用 **Encapsulate Global References （封裝全域參照）**就更乾淨些。
+
+```c++
+class OptionSource
+{
+public:
+    virtual ~OptionSource() = 0;
+    virtual Option GetOption(const string& optionName) = 0;
+    virtual void SetOption(const string& optionName,
+                            const Option& newOption) = 0;
+};
+```
+
+該類別包含我們所需的**global functions**的抽象版本。
+(ʕ •ᴥ•ʔ：其實就是interface啦)
+
+```c++
+class ProductionOptionSource : public OptionSource
+{
+public:
+    Option GetOption(const string& optionName);
+    void SetOption(const string& optionName,
+                const Option& newOption);
+};
+
+Option ProductionOptionSource::GetOption(
+    const string& optionName)
+{
+    ::GetOption(optionName);
+}
+
+void ProductionOptionSource::SetOption(
+    const string& optionName,
+    const Option& newOption)
+{
+    ::SetOption(optionName, newOption);
+};
+```
+
+> To encapsulate references to free functions, make an interface class with fake and production subclasses. Each of the functions in the production code should do noth- ing more than delegate to a global function.
+
+這個重構引入了**seam （接縫）**。
+
+之後我們便可以對目標類別進行參數化，
+使其接受一個**OptionSource**物件。
+
+於測試時傳遞偽**OptionSource**物件，並在產品程式碼傳遞真**OptionSource**物件。
+
+### Steps
+To Encapsulate Global References, follow these steps:
+1. Identify the globals that you want to encapsulate.
+2. Create a class that you want to reference them from.
+3. Copy the globals into the class. If some of them are variables, handle their initialization in the class.
+4. Comment out the original declarations of the globals.
+5. Declare a global instance of the new class.
+6. **Lean on the Compiler （依靠編輯器）** to find all the unresolved references to the old globals.
+7. Precede each unresolved reference with the name of the global instance of the new class.
+8. In places where you want to use fakes, use **Introduce Static Setter （靜態設置方法）**, **Parameterize Constructor （參數化建構子）**, **Parameterize Method （參數化方法）** or **Replace Global Reference with Getter （獲取方法替換全域參照）**.
 
 ---
 
