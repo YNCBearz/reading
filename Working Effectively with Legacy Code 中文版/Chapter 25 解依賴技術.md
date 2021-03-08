@@ -187,7 +187,7 @@ class Renderer {
 ```
 
 我們將原來的**draw**方法，複製進來。
-透過**Lean on the Compiler （編譯器技術）**告訴我們何處需要變動。
+透過 **Lean on the Compiler （編譯器技術）**告訴我們何處需要變動。
 
 ```c++
 void Renderer::draw() {
@@ -249,3 +249,115 @@ You can use these steps to do Break out Method Object safely without tests:
 8. If needed, use **Extract Interface** to break the dependency on the original class.
 
 ---
+
+## Definition Completion （定義補全）
+
+有些語言允許你在一個地方宣告類型，然後在另一個地方定義它。
+
+ʕ •ᴥ•ʔ：聽起來像是Interface。
+
+```c++
+class CLateBindingDispatchDriver : public CDispatchDriver {
+public:
+            CLateBindingDispatchDriver ();
+    virtual ~CLateBindingDispatchDriver ();
+
+    ROOTID  GetROOTID (int id) const;
+
+    void    BindName (int id,
+                    OLECHAR FAR *name);
+private:
+    CArray<ROOTID, ROOTID& > rootids;
+};
+```
+
+用戶建立**CLateBindingDispatchDrivers**的物件，
+然後呼叫其**BindName**方法來將名字綁定到ID。
+
+我們希望在測試該類別時，以其他種方式綁定，而不是透過原來的**BindName**方法。
+
+可以透過**Definition Completion （定義補全）**的方式，
+於測試檔案中包含其標頭檔，然後對目標方法提供另一個定義：
+
+```c++
+#include "LateBindingDispatchDriver.h"
+
+CLateBindingDispatchDriver::CLateBindingDispatchDriver() {}
+
+CLateBindingDispatchDriver::~CLateBindingDispatchDriver() {}
+
+ROOTID GetROOTID (int id) const { return ROOTID(-1); }
+
+void BindName(int id, OLECHAR FAR *name) {}
+
+TEST(AddOrder,BOMTreeCtrl)
+{
+    CLateBindingDispatchDriver driver;
+    CBOMTreeCtrl ctrl(&driver);
+    ctrl.AddOrder(COrderFactory::makeDefault());
+    LONGS_EQUAL(1, ctrl.OrderCount());
+}
+```
+
+只需在測試中直接定義有關方法，
+我們便可以提供只用於測試的方法定義。
+
+可以給那些我們在測試時並不關心的方法，定義一個空的方法體，
+也可以定義可用於所有測試的感測方法。
+
+在C/C++中使用**Definition Completion （定義補全）**，
+意謂著我們得**為了測試建立單獨的可執行檔案**。
+否則替換的定義會跟原有的定義，在連接期產生衝突。
+
+另一個缺點是，目標類別現在有了兩組定義，
+可能會使程式碼的維護帶來很大的負擔。
+
+因此，只建議在解開初始依賴時，使用該技術。
+
+### Steps
+To use Definition Completion in C++, follow these steps:
+1. Identify a class with definitions you’d like to replace.
+2. Verify that the method definitions are in a source file, not a header.
+3. Include the header in the test source file of the class you are testing.
+4. Verify that the source files for the class are not part of the build.
+5. Build to find missing methods.
+6. Add method definitions to the test source file until you have a complete build.
+
+---
+
+## Encapsulate Global References （封裝全域參照）
+
+
+
+---
+
+## Expose Static Method （暴露靜態方法）
+
+---
+
+## Extract and Override Call （提取並覆寫呼叫）
+
+---
+
+## Extract and Override Factory Method （提取並覆寫工廠方法）
+
+---
+
+## Extract and Override Getter （提取並覆寫獲取方法）
+
+---
+
+## Extract Implementer （實作提取）
+
+---
+
+## Extract Interface （介面提取）
+
+---
+
+## Introduce Instance Delegator （引入實例委託）
+
+---
+
+## Introduce Static Setter （引入靜態設置方法）
+
