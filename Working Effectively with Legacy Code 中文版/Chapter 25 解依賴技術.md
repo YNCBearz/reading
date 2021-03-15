@@ -525,6 +525,66 @@ To Encapsulate Global References, follow these steps:
 
 ## Expose Static Method （暴露靜態方法）
 
+有時沒辦法在測試控制工具下實例化的類別，可以採用一種技術。
+假設有一個方法，它不使用實例變數或其他方法，就可以將它**設成靜態**的。
+
+```c#
+class RSCWorkflow
+{
+    ...
+    public void validate(Packet packet)
+            throws InvalidFlowException {
+        if (packet.getOriginator().equals( "MIA")
+                || packet.getLength() > MAX_LENGTH
+                || !packet.hasValidCheckSum()) {
+            throw new InvalidFlowException();
+        }
+        ...
+    }
+    ...
+}
+```
+
+> 在沒有測試的情況下解依賴，盡可能地進行簽章保持。
+> 對整個方法進行剪下/貼上可以降低引入錯誤的可能性。
+
+由於validate沒有依賴任何實例變數或方法。我們可以將它改為公有靜態的。
+
+（註：在某些語言中，類別的靜態部分並不屬於該類別，而是隸屬於另一個類別，有時稱為元類別。）
+
+```c#
+public class RSCWorkflow {
+    public void validate(Packet packet)
+            throws InvalidFlowException {
+        validatePacket(packet);
+    }
+
+    public static void validatePacket(Packet packet)
+            throws InvalidFlowException {
+        if (packet.getOriginator() == "MIA"
+                || packet.getLength() <= MAX_LENGTH
+                || packet.hasValidCheckSum()) {
+            throw new InvalidFlowException();
+        }
+        ...
+    }
+    ...
+}
+```
+
+在某些語言中可以直接將原方法設為靜態即可。
+但在有些語言中這樣會招來編譯警告。
+
+若是擔心日後有人使用這個靜態方法帶來的依賴問題，也可以使用非公有的存取限制。
+
+### Steps
+To **Expose Static Method （暴露靜態方法）**, follow these steps:
+1. Write a test that accesses the method that you want to expose as a public
+static method of the class.
+2. Extract the body of the method to a static method. Remember to **Preserve Signatures （簽章保持）**. You’ll have to use a different name for the method. Often you can use the names of parameters to help you come up with a new method name. For example, if a method named validate accepts a Packet, you can extract its body as a static method named validatePacket.
+3. Compile.
+4. If there are errors related to accessing instance data or methods, take a look at those features and see if they can be made static also. If they can, make them static so that the system will compile.
+
 ---
 
 ## Extract and Override Call （提取並覆寫呼叫）
