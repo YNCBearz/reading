@@ -206,18 +206,134 @@ internal class FakeExtensionManager : IExtensionManager
 
 ## 3.5 重構技術的變形
 
+想避免使用基底類別而改使用介面的其中一個原因，
+可能是因為在產品程式碼中，該基底類別已經內建（或可能會有）了某個相依物件的依賴，這讓實作衍生子類別的難度更高。
+
 ### 3.5.1 透過擷取與覆寫直接模擬假結果
+
+```c#
+public class LogAnalyzerUsingFactoryMethod
+{
+    public bool IsValidLogFileName(string fileName)
+    {
+        return this.IsValid(fileName);
+    }
+
+     protected virtual bool IsValid(string fileName)
+    {
+       FileExtensionManager mgr = new FileExtensionManager();
+       return mgr.IsValid(fileName);
+    }
+}
+
+[Test]
+public void overrideTestWithoutStub()
+{
+    TestableLogAnalyzer logan = new TestableLogAnalyzer();
+    logan.IsSupported = true;
+
+    bool result = logan.IsValidLogFileName("file.ext");
+    Assert.True(result,"...");
+}
+
+class TestableLogAnalyzer: LogAnalyzerUsingFactoryMethod
+{
+    public bool IsSupported;
+    protected override bool IsValid(string fileName)
+    {
+        return IsSupported;
+    }
+}
+
+```
 
 ---
 
 ## 3.6 克服封裝問題
 
+> 請將測試程式視為另一個最終使用者！
+
 ### 3.6.1 使用internal和[InternalsVisibleTo]
+
+如果你不喜歡在類別中加入人人可見的公開建構函式，
+可以將它標記為internal，而不是public。
+
+```c#
+public class LogAnalyzer
+{
+    ...
+    internal LogAnalyzer (IExtensionManager extentionMgr)
+        {
+            manager = extentionMgr;
+        }
+    ...
+}
+using System.Runtime.CompilerServices;
+[assembly:
+    InternalsVisibleTo("AOUT.CH3.Logan.Tests")]
+```
 
 ### 3.6.2 使用[Conditional]特性
 
+透過System.Diagnostics.ConditionalAttribute特性進行標記也是種很直覺的方式。
+
+(DEBUG 和 RELEASE 是最常見的兩個，
+Visual Studio在預設情況下依據你的編譯種類使用這兩個值。)
+
+在編譯時，如果這個編譯標記**不**存在，帶標記方法的**呼叫端**就不會包含在這個編譯版本中。
+
+例如，在編譯release版本時，下面這個方法所有的呼叫行為都會被移除，
+而這個方法內容仍會保留下來。
+
+```c#
+[Conditional ("DEBUG")]
+public void DoSomething()
+{
+}
+```
+
+如果有些方法只在某些偵錯模式下使用，就可以使用這個特性進行標記（建構函式除外）。
+
+> 這些帶著標記的方法在產品程式碼中並不會被隱藏。
+
+注意：在產品程式碼中使用條件編譯，會降低程式碼的可讀性。
+
 ### 3.6.3 使用#if和#endif進行條件編譯
+
+把方法和專門提供給測試呼叫的建構函式，放在#if與#endif結構裡，
+可以確保它們只在對應的編譯參數設定下編譯。
+
+```c#
+#if DEBUG
+        public LogAnalyzer (IExtensionManager extensionMgr)
+        {
+            manager = extensionMgr;
+        }
+#endif
+...
+#if DEBUG
+        [Test]
+        public void
+IsValidFileName_SupportedExtension_True()
+        {
+...
+            //create analyzer and inject stub
+            LogAnalyzer log =
+                new LogAnalyzer (myFakeManager);
+            ...
+        }
+#endif
+```
+
+這個方式被廣泛地使用，但也會讓程式看起來很亂。
+為了保持程式的清晰，在合適的時候建議使用[InternalsVisibleTo]特性。
 
 ---
 
 ## 3.7 小結
+
+在程式中注入虛設常式物件的方法有很多。
+關鍵在於找到合適的中間層，或建立出這個中間層，把它拿來作**接縫**。
+
+因為假物件並不一定為虛設常式(stub)或模擬物件(mock)，
+因此我們在命名時習慣使用**fake**這個詞。
