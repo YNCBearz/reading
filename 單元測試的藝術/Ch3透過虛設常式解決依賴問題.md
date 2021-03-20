@@ -112,9 +112,95 @@ class ExtensionManagerFactory
 
 ʕ •ᴥ•ʔ：天衣無縫、包開、橫刀奪愛 (Hunter x Hunter)
 
+關於中間層的使用，你需要瞭解的是**當控制的中間層深度越深（程式執行堆疊越深），你對被測試程式的控制能力越大。**
+
+然而這也使得測試程式變的更難理解，更不好找到適合插入接縫的位置。
+
+- 第一層（在被測試程式中偽造一個成員）：
+
+你需要增加一個建構函式，以便在建構函式中設定類別相關資訊。
+這個方式會改變被測試程式的語意及呼叫，建議避免使用這種方法。
+
+- 第二層（在工廠類別中偽造一個成員）：
+在工廠類別中新增一個setter，供測試方法注入一個你想要的假相依物件。
+唯一缺點是，你需要瞭解誰會在何時呼叫工廠，但這方式還是比其他方法來的簡單合理。
+
+- 第三層（偽造假工廠類別）：
+一個假物件回傳另一個假物件。這會讓測試程式變得不容易理解，最好還是盡量避免。
 
 
 #### 4. 偽造方法 - 使用一個區域的工廠方法（擷取與覆寫）
+這種方式不屬於表3-1中任何一層，它在接近被測試程式的表層建立全新的中介層。
+
+使用這種方法，你透過被測試程式類別中的一個區域**虛擬**方法(virtual method)做為工廠方法。
+這就產生了接縫，你可以在測試中新增類別，**繼承**自被測試類別，
+透過**覆寫**其虛擬的工廠方法，注入你設定好的假相依物件。
+
+```c#
+public class LogAnalyzerUsingFactoryMethod
+{
+    public bool IsValidLogFileName(string fileName)
+    {
+        return GetManager().IsValid(fileName);
+    }
+    protected virtual IExtensionManager GetManager()
+    {
+        return new FileExtensionManager();
+    }
+}
+
+[TestFixture]
+public class LogAnalyzerTests
+{
+   [Test]
+    public void overrideTest()
+    {
+        FakeExtensionManager stub = new FakeExtensionManager();
+        stub.WillBeValid = true;
+
+        TestableLogAnalyzer logan =
+             new TestableLogAnalyzer(stub);
+
+        bool result = logan.IsValidLogFileName("file.ext");
+        Assert.True(result);
+    }
+}
+
+class  TestableLogAnalyzer
+               :LogAnalyzerUsingFactoryMethod
+{
+    public TestableLogAnalyzer(IExtensionManager mgr)
+    {
+        Manager = mgr;
+    }
+
+    public IExtensionManager Manager;
+
+    protected override IExtensionManager GetManager()
+    {
+        return Manager;
+    }
+}
+
+internal class FakeExtensionManager : IExtensionManager
+{
+    //no change from the previous samples
+    ...
+}
+
+```
+
+這個技巧稱為「**擷取與覆寫**」(Extract and Override)，
+試過幾次後，你會發現這方法的強大之處。因為它讓你無須進入到過深的層次（改變呼叫堆疊的深度依賴）就可以直接替換相依物件。
+
+### 5. 何時該使用這種方式
+「**擷取與覆寫**」適合用來模擬提供給被測試類別的**輸入(input)**，
+但如果要拿來驗證被測試程式對相依物件的呼叫，卻十分不方便。
+
+當需要模擬被測試類別由外部程式取得或回傳的輸入值時，使用此手法，
+可以讓程式碼語意不會為了可測試性而改變（新介面、新的建構函式等）。
+
+除非程式碼已明顯具備可測試性的接縫：一個可偽造的介面或一個可以注入接縫的位置。否則推薦優先使用此技巧。
 
 ---
 
