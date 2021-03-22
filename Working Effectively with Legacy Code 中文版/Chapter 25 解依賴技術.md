@@ -589,6 +589,63 @@ static method of the class.
 
 ## Extract and Override Call （提取並覆寫呼叫）
 
+當我們遇到想要替換掉的方法呼叫時，若能解開依賴，就能防止測試帶來的副作用。
+
+```c#
+public class PageLayout
+{
+    private int id = 0;
+    private List styles;
+    private StyleTemplate template;
+    ...
+    protected void rebindStyles() {
+        styles = StyleMaster.formStyles(template, id);
+       ...
+    }
+    ...
+}
+```
+
+我們來解開對SysleMaster.formStyles的依賴。
+
+```c#
+public class PageLayout {
+    private int id = 0;
+    private List styles;
+    private StyleTemplate template;
+    ...
+    protected void rebindStyles() {
+        styles = formStyles(template, id);
+    ...
+    }
+
+    protected List formStyles(StyleTemplate template, int id) {
+        return StyleMaster.formStyles(template, id);
+    }
+    ...
+}
+```
+
+一旦有了formStyles方法，我們便可以覆寫它來解開依賴了。
+
+```c#
+public class TestingPageLayout extends PageLayout {
+    protected List formStyles(StyleTemplate template,
+                            int id) {
+        return new ArrayList();
+    }
+    ...
+}
+```
+
+### Steps
+To **Extract and Override Call （提取並覆寫呼叫）**, follow these steps:
+1. Identify the call that you want to extract. Find the declaration of its method.
+Copy its method signature so that you can **Preserve Signatures （簽章保持）** .
+2. Create a new method on the current class. Give it the signature you’ve
+copied.
+3. Copy the call to the new method and replace the call with a call to the new method.
+
 ---
 
 ## Extract and Override Factory Method （提取並覆寫工廠方法）
