@@ -591,7 +591,7 @@ static method of the class.
 
 當我們遇到想要替換掉的方法呼叫時，若能解開依賴，就能防止測試帶來的副作用。
 
-```c#
+```csharp
 public class PageLayout
 {
     private int id = 0;
@@ -608,7 +608,7 @@ public class PageLayout
 
 上述例子中，rebindStyles依賴了SysleMaster的formStyles，讓我們試著解開它。
 
-```c#
+```csharp
 public class PageLayout {
     private int id = 0;
     private List styles;
@@ -628,7 +628,7 @@ public class PageLayout {
 
 一旦有了formStyles方法，我們便可以覆寫它來解開依賴了。
 
-```c#
+```csharp
 public class TestingPageLayout extends PageLayout {
     protected List formStyles(StyleTemplate template,
                             int id) {
@@ -650,7 +650,7 @@ copied.
 
 ## Extract and Override Factory Method （提取並覆寫工廠方法）
 
-```c#
+```csharp
 public class WorkflowEngine {
     public WorkflowEngine () {
         Reader reader
@@ -671,7 +671,7 @@ public class WorkflowEngine {
 上述例子在建構式寫死了物件的建立，因此不易作測試。
 讓我們來改寫它。
 
-```c#
+```csharp
 public class WorkflowEngine {
     public WorkflowEngine () {
         this.tm = makeTransactionManager();
@@ -695,7 +695,7 @@ protected TransactionManager makeTransactionManager() {
 
 有了工廠方法，便可以將它子類別化並覆寫。
 
-```c#
+```csharp
 public class TestWorkflowEngine extends WorkflowEngine {
     protected TransactionManager makeTransactionManager() {
         return new FakeTransactionManager();
@@ -703,7 +703,7 @@ public class TestWorkflowEngine extends WorkflowEngine {
 }
 ```
 
-（註：在某些語言（例如：c++），不允許於建構子中對虛擬函式呼叫，可能要改用其它方式來達成。）
+（註：在某些語言（例如：C++），不允許於建構子中對虛擬函式呼叫，可能要改用其它方式來達成。）
 
 ### Steps
 To **Extract and Override Factory Method （提取並覆寫工廠方法）**, follow these steps:
@@ -714,6 +714,74 @@ To **Extract and Override Factory Method （提取並覆寫工廠方法）**, fo
 ---
 
 ## Extract and Override Getter （提取並覆寫獲取方法）
+
+以下方法適用於無法於建構子呼叫虛擬函式（例如：C++），
+當你僅於建構子中建立物件並不對其進行操作時，此方法適用。
+
+ʕ •ᴥ•ʔ：作者不愛這招。
+
+```php
+class Repository
+{
+    private $db;
+
+    public function __construct() {
+        $this->db = new DB();
+    }
+
+    public function get($column) {
+        return $this->db->get($column);
+        ...
+    }
+}
+```
+
+上述為最初的程式碼。
+
+```php
+class Repository
+{
+    private $db;
+
+    public function __construct() {
+        $this->db = new DB();
+    }
+
+    public function get($column) {
+        return $this->getDB()->get($column);
+        ...
+    }
+
+    protected function getDB() {
+        if ($this->db === null) {
+            $this->db = new DB();
+        }
+
+        return $this->db;
+    }
+}
+```
+
+透過lazy getter（延遲求值），我們就擁有了接縫。
+
+```php
+class FakeRepository extends Repository
+{
+    protected function getDB() {
+        return new SqlLiteDB();
+    }
+}
+```
+
+這個方法最大的缺點是，依賴物件可能於未初始化之前就被存取到了。
+
+### Steps
+To **Extract and Override Getter （提取並覆寫獲取方法）**, follow these steps:
+1. Identify the object you need a getter for.
+2. Extract all of the logic needed to create the object into a getter.
+3. Replace all uses of the object with calls to the getter, and initialize the reference that holds the object to null in all constructors.
+4. Add the first-time logic to the getter so that the object is constructed and assigned to the reference whenever the reference is null.
+5. Subclass the class and override the getter to provide an alternative object for testing.
 
 ---
 
