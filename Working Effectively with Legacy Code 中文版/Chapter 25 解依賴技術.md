@@ -650,6 +650,67 @@ copied.
 
 ## Extract and Override Factory Method （提取並覆寫工廠方法）
 
+```c#
+public class WorkflowEngine {
+    public WorkflowEngine () {
+        Reader reader
+            = new ModelReader(
+                AppConfig.getDryConfiguration());
+
+        Persister persister
+            = new XMLStore(
+                AppConfiguration.getDryConfiguration());
+
+        this.tm = new TransactionManager(reader, persister);
+        ...
+    }
+    ...
+}
+```
+
+上述例子在建構式寫死了物件的建立，因此不易作測試。
+讓我們來改寫它。
+
+```c#
+public class WorkflowEngine {
+    public WorkflowEngine () {
+        this.tm = makeTransactionManager();
+        ...
+    }
+
+protected TransactionManager makeTransactionManager() {
+    Reader reader
+        = new ModelReader(
+            AppConfiguration.getDryConfiguration());
+
+    Persister persister
+    = new XMLStore(
+        AppConfiguration.getDryConfiguration());
+
+    return new TransactionManager(reader, persister);
+    }
+    ...
+}
+```
+
+有了工廠方法，便可以將它子類別化並覆寫。
+
+```c#
+public class TestWorkflowEngine extends WorkflowEngine {
+    protected TransactionManager makeTransactionManager() {
+        return new FakeTransactionManager();
+    }
+}
+```
+
+（註：在某些語言（例如：c++），不允許於建構子中對虛擬函式呼叫，可能要改用其它方式來達成。）
+
+### Steps
+To **Extract and Override Factory Method （提取並覆寫工廠方法）**, follow these steps:
+1. Identify an object creation in a constructor.
+2. Extract all of the work involved in the creation into a factory method.
+3. Create a testing subclass and override the factory method in it to avoid dependencies on problematic types under test.
+
 ---
 
 ## Extract and Override Getter （提取並覆寫獲取方法）
