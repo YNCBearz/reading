@@ -528,7 +528,7 @@ To Encapsulate Global References, follow these steps:
 有時沒辦法在測試控制工具下實例化的類別，可以採用一種技術。
 假設有一個方法，它不使用實例變數或其他方法，就可以將它**設成靜態**的。
 
-```c#
+```java
 class RSCWorkflow
 {
     ...
@@ -545,14 +545,17 @@ class RSCWorkflow
 }
 ```
 
+在上述例子中，我們會發現validate的方法，大都來自Packet，
+或許將此方法移到Packet會是不錯選擇，但就現階段而言風險還是太大點。
+
 > 在沒有測試的情況下解依賴，盡可能地進行簽章保持。
 > 對整個方法進行剪下/貼上可以降低引入錯誤的可能性。
 
-由於validate沒有依賴任何實例變數或方法。我們可以將它改為公有靜態的。
+由於validate**沒有依賴任何實例變數或方法**。我們可以將它改為**公有靜態**的。
 
 （註：在某些語言中，類別的靜態部分並不屬於該類別，而是隸屬於另一個類別，有時稱為元類別。）
 
-```c#
+```java
 public class RSCWorkflow {
     public void validate(Packet packet)
             throws InvalidFlowException {
@@ -572,10 +575,7 @@ public class RSCWorkflow {
 }
 ```
 
-在某些語言中可以直接將原方法設為靜態即可。
-但在有些語言中這樣會招來編譯警告。
-
-若是擔心日後有人使用這個靜態方法帶來的依賴問題，也可以使用非公有的存取限制。
+> 在某些語言中可以直接將原方法設為靜態即可。但在有些語言中這樣會招來編譯警告。
 
 ### Steps
 To **Expose Static Method （暴露靜態方法）**, follow these steps:
@@ -606,7 +606,7 @@ public class PageLayout
 }
 ```
 
-我們來解開對SysleMaster.formStyles的依賴。
+上述例子中，rebindStyles依賴了SysleMaster的formStyles，讓我們試著解開它。
 
 ```c#
 public class PageLayout {
