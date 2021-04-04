@@ -787,13 +787,308 @@ To **Extract and Override Getter （提取並覆寫獲取方法）**, follow the
 
 ## Extract Implementer （實作提取）
 
+當發現想提出介面，卻發現最適合的名字已被其他類別佔用時，我們通常只剩幾個選擇：
+1. 取一個愚蠢的名字
+2. 從要提到介面的方法的名稱中得到啟發
+
+作者不贊成於介面加入「I」前綴。
+
+以下介紹當名稱已被現有類別取走時，
+如何使用**Extract Implemeter（實作提取）**，
+來獲得所需的分離。
+
+> 原本只能用信用卡付款
+
+```php
+class Pay
+{
+    private int $cost;
+    private array $list;
+
+    public function checkout()
+    {
+        //用信用卡付錢
+    }
+}
+```
+
+> 想加入LinePay類別並提取介面，但取不出好命名
+
+```php
+
+//從原本的Pay類別複製，刪除所有非公有成員變數/方法，其餘公開方法改為抽象，最後提取成介面
+interface Pay
+{
+    public function checkout();
+}
+
+//將原本的Pay類別改名成CreditCard並實作介面
+class CreditCard implements Pay
+{
+    private int $cost;
+    private array $list;
+
+    public function checkout()
+    {
+        //用信用卡付錢
+    }
+}
+
+//新增LinePay類別並實作介面
+class LinePay implements Pay
+{
+    private int $cost;
+    private array $list;
+
+    public function checkout()
+    {
+        //用LinePay付錢
+    }
+}
+```
+
+接著找到原本試圖建立Pay物件的程式碼，將其換成CreditCard物件。
+
+### Steps
+To Extract Implementer, follow these steps:
+1. Make a copy of the source class’s declaration. Give it a different name. It’s useful to have a naming convention for classes you’ve extracted. I often use the prefix Production to indicate that the new class is the production code implementer of an interface.
+2. Turn the source class into an interface by deleting all non-public methods and all variables.
+3. Make all of the remaining public methods abstract. If you are working in C++, make sure that none of the methods that you make abstract are overridden by non-virtual methods.
+
+> 若為更複雜的例子，建議使用**Extract Interface （介面提取）**
+
 ---
 
 ## Extract Interface （介面提取）
 
+在許多語言中，Extract Interface （介面提取）都是最安全的解依賴技術之一。如果某步出錯，編譯器會立刻告訴你。
+
+介面提取有三種方式：
+1. 利用IDE
+2. 一步一步提取
+3. Copy and Paste
+
+> 以下重點描述第二種方式
+
+```php
+class PaydayTransaction
+{
+    public function __construct(PayrollDatabase $database, TransactionLog $log )
+    {
+        $this->database = $database;
+        $this->log = $log;
+    }
+
+    public function run()
+    {
+        //交易進行中...
+        $this->log->saveTransaction($this);
+    }
+}
+
+class TransactionLog
+{
+    public function saveTransaction(Transaction $transaction)
+    {
+        //交易紀錄儲存中
+    }
+
+    public function recordError(int $code)
+    {
+        //交易編號有錯誤
+    }
+}
+```
+
+> 欲編寫測試案例
+
+```php
+class PaydayTransactionTest
+{
+    public function testRun()
+    {
+        /**
+         * @var Transaction $sut
+         */
+        $sut = new PaydayTransaction(getTestingDatabase());
+
+        $sut->run();
+
+        $this->assertEquals(getSampleCheck(12), getTestingDatabase().findCheck(12));
+
+    }
+}
+```
+
+> 今天想讓上面的測試案例通過，仍需要一個transactionLog
+
+```php
+class PaydayTransactionTest
+{
+    public function testRun()
+    {
+
+        /**
+         * @var FakeTransactionLog $aLog
+         */
+        $aLog = new FakeTransactionLog();
+        /**
+         * @var Transaction $sut
+         */
+        $sut = new PaydayTransaction(getTestingDatabase(), $aLog);
+
+        $sut->run();
+
+        $this->assertEquals(getSampleCheck(12), getTestingDatabase().findCheck(12));
+
+    }
+}
+```
+
+要讓上面程式碼通過編譯，須對TransactionLog提取介面，
+然後從該介面衍生出FakeTransactionLog，最後修改PaydayTransaction。
+
+```php
+interface TransactionRecorder
+{
+    //目前什麼方法都沒有
+}
+
+public class TransactionLog implements TransactionRecorder
+{
+    //還有其他方法
+}
+
+public function FakeTransactionLog implements TransactionRecorder
+{
+    //還有其他方法
+}
+```
+
+> 最後修改PaydayTransation
+
+```php
+class PaydayTransaction
+{
+    public function __construct(PayrollDatabase $database, TransactionRecorder $log )
+    {
+        $this->database = $database;
+        $this->log = $log;
+    }
+
+    public function run()
+    {
+        //交易進行中...
+        $this->log->saveTransaction($this);
+    }
+}
+```
+
+> 修改TransactionRecorder介面
+
+```php
+interface TransactionRecorder
+{
+    public function saveTransaction(Transaction $transaction);
+}
+```
+
+注意：提取介面時，不一定要提取類別上的所有公開方法
+
+### Steps
+To **Extract Interface （介面提取）**, follow these steps:
+1. Create a new interface with the name you’d like to use. Don’t add any
+methods to it yet.
+2. Make the class that you are extracting from implement the interface. This can’t break anything because the interface doesn’t have any methods. But it is good to compile and run your test just to verify that.
+3. Change the place where you want to use the object so that it uses the interface rather than the original class.
+4. Compile the system and introduce a new method declaration on the interface for each method use that the compiler reports as an error.
+
 ---
 
 ## Introduce Instance Delegator （引入實例委託）
+
+人們會因為各種原因使用靜態方法，最常見的原因是實作單例模式，
+其次是使用靜態方法來建立**Utility （實用類別）**。
+
+> **Utility （實用類別）在許多設計都是一眼可看出來的。它們通常沒有任何實例變數與實例方法，全部都由靜態方法與靜態常數組成。**
+
+同樣地，人們會因為各種原因建立**Utility （實用類別）**。
+大多數是因為無法為一組方法尋找到合適的公用抽象。
+
+例如JDK中的Math類別。
+
+當你的專案有靜態方法，而其中包含你沒辦法或不想在測試時依賴的東西時（技術術語稱作**static cling「靜態黏著」**），該怎麼辦呢？
+
+```php
+class BankingServices
+{
+    public static function updateAccountBalance(int $userId, Money $amount)
+    {
+        //
+    }
+
+    //還有其他靜態方法
+}
+```
+
+BankingServices僅包含靜態方法。
+我們現在在裡面加一個實例方法。
+
+```php
+class BankingServices
+{
+    public static function updateAccountBalance(int $userId, Money $amount)
+    {
+        //
+    }
+
+    public function updateBalance(int $userId, Money $amount)
+    {
+        $this->updateAccountBalance($userId, $amount);
+    }
+
+    //還有其他靜態方法
+}
+```
+
+接下來我們將對updateAccountBalance的呼叫作修改：
+
+> 修改前
+
+```php
+class SomeClass
+{
+    public function someMethod()
+    {
+        //
+        BankingServices::updateAccountBalance($id, $sum);
+    }
+}
+```
+
+> 修改後
+
+```php
+class SomeClass
+{
+    public function someMethod(BankingServices $services)
+    {
+        //
+        $services->updateBalance($id, $sum);
+    }
+}
+```
+
+注意：只有在我們能於外部建立一個BankingServices物件時，才能使用這個方法引入物件接縫。
+
+當每個對該類別的呼叫，都能透過實例方法轉發後，
+我們可以進一步重構，將靜態方法與實例方法拆開。
+
+### Steps
+To Introduce **Instance Delegator （實例委託）**, follow these steps:
+1. Identify a static method that is problematic to use in a test.
+2. Create an instance method for the method on the class. Remember to **Preserve Signatures （簽章保持）**. Make the instance method delegate to the static method.
+3. Find places where the static methods are used in the class you have under test. Use **Parameterize Method （參數化方法）**  or another dependency-breaking technique to supply an instance to the location where the static method call was made.
 
 ---
 
