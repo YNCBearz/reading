@@ -1094,3 +1094,67 @@ To Introduce **Instance Delegator （實例委託）**, follow these steps:
 
 ## Introduce Static Setter （引入靜態設置方法）
 
+當你想把類別放入測試控制工具中，卻還得查看所有全域變數，
+確保它們的狀態/值滿足你進行測試所需的條件。
+
+有些全域變數可以作成單例模式，但要如何在測試時替換它呢？
+這種做法可能會令你不安，畢竟單例模式是為了防止人們在產品程式碼中，
+建立不只一個個目標物件。
+
+但別忘了，編寫測試同樣目的是防止錯誤。
+
+```php
+public class ExternalRouter
+{
+    protected static $instance = null;
+
+    /**
+     * 僅有私有的建構函式，讓外界僅能以 getInstance() 呼叫
+     */
+    private function __construct()
+    {
+    }
+
+    public static function getInstance()
+    {
+        if (static::$instance === null) {
+            static::$instance = new self();
+        }
+
+        return self::$instance;
+    }
+}
+```
+
+> 讓我們在其中引入一個替換該實例的方法
+
+```php
+public class ExternalRouter
+{
+    public static function setTestingInstance(ExternalRouter $newInstance)
+    {
+        unset(self::$instance);
+        self::$instance = $newInstance;
+    }
+
+    //還有其他方法
+}
+```
+
+透過引入替換實例的方法，我們透過子類別化該單例類別，
+來實作感測和分離。
+
+你或許會疑問：「人們會不會誤用我們為測試留的後門？」
+答案是可能的，但若某個實例在系統的唯一性是如此重要，
+最好的辦法應該是確保所有團員都意識到這個重要性。
+
+另一個作法是利用工廠接縫，來建立假物件。
+
+### Steps
+To **Introduce Static Setter （靜態設置方法）**, follow these steps:
+1. Decrease the protection of the constructor so that you can make a fake
+by subclassing the singleton.
+2. Add a static setter to the singleton class. The setter should accept a reference to the singleton class. Make sure that the setter destroys the singleton instance properly before setting the new object.
+3. If you need access to private or protected methods in the singleton to set it up properly for testing, consider subclassing it or extracting an interface and making the singleton hold its instance as reference whose type is the type of the interface.
+
+
